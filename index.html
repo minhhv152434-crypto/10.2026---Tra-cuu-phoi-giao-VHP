@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F151A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Tra cứu phôi tồn kho</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231E63C8'/%3E%3Crect x='14' y='22' width='36' height='8' rx='2' fill='%23fff'/%3E%3Crect x='14' y='34' width='36' height='8' rx='2' fill='%23fff' opacity='.55'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0F151A; --panel:#18222B; --panel-2:#1F2C36; --line:#2B3B47;
+  --ink:#EAF0F4; --ink-dim:#8FA1AE; --ink-faint:#63757F;
+  --ok:#2FBF71; --no:#E0544A; --warn:#E8A33D;
+  --r:14px;
+  --fd:"Roboto Condensed","Arial Narrow","Helvetica Neue Condensed",Roboto,Arial,sans-serif;
+  --fb:Roboto,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--fb);
+  font-size:16px; line-height:1.45; -webkit-text-size-adjust:100%;
+  padding:0 0 44px; overscroll-behavior-y:none;
+}
+.wrap{max-width:580px;margin:0 auto;padding:0 14px}
+
+/* ---------- header ---------- */
+header{
+  position:sticky;top:0;z-index:20;background:rgba(15,21,26,.95);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+  padding-top:env(safe-area-inset-top);
+}
+.hd{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:10px 0 8px}
+.hd h1{font-family:var(--fd);font-size:17px;font-weight:700;margin:0;letter-spacing:.14em;text-transform:uppercase}
+.hd .meta{font-family:var(--fd);font-size:11px;letter-spacing:.08em;color:var(--ink-faint);white-space:nowrap}
+
+.search{position:relative;padding-bottom:10px}
+#q{
+  width:100%;background:var(--panel);border:1px solid var(--line);color:var(--ink);
+  border-radius:var(--r);padding:16px 46px 16px 16px;
+  font-family:var(--fd);font-size:26px;font-weight:700;letter-spacing:.10em;
+  text-transform:uppercase;outline:none;
+}
+#q::placeholder{color:var(--ink-faint);letter-spacing:.06em;font-weight:400}
+#q:focus{border-color:#5B7688;background:var(--panel-2)}
+#clear{
+  position:absolute;right:8px;top:8px;width:38px;height:44px;border:0;background:none;
+  color:var(--ink-dim);font-size:24px;line-height:1;cursor:pointer;display:none
+}
+#clear.on{display:block}
+.gobtn{
+  width:100%;margin-top:8px;border:1px solid #3D5B72;background:#2C4356;color:var(--ink);
+  border-radius:var(--r);padding:14px 10px;cursor:pointer;
+  font-family:var(--fd);font-size:19px;font-weight:700;letter-spacing:.16em;text-transform:uppercase
+}
+.gobtn:active{background:#38546B}
+
+/* ---------- trạng thái ---------- */
+.hint{color:var(--ink-dim);font-size:14px;padding:22px 4px;line-height:1.65}
+.hint b{color:var(--ink);font-weight:600}
+.hint .k{font-family:var(--fd);letter-spacing:.06em;color:var(--ink)}
+
+.miss{border:1px solid #4A2A2A;background:#231A1A;border-radius:var(--r);padding:18px 16px;margin-top:4px}
+.miss .t{font-family:var(--fd);font-size:21px;letter-spacing:.06em;color:#F0B0A8;text-transform:uppercase}
+.miss .s{color:var(--ink-dim);font-size:14px;margin-top:7px;line-height:1.6}
+.miss .s b{color:#EAF0F4}
+
+/* ---------- danh sách gợi ý ---------- */
+.list{margin-top:4px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--panel)}
+.item{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer}
+.item:last-child{border-bottom:0}
+.item:active{background:var(--panel-2)}
+.item .code{font-family:var(--fd);font-size:19px;font-weight:700;letter-spacing:.08em}
+.item .code em{font-style:normal;color:var(--ink-faint)}
+.item .sub{font-size:12px;color:var(--ink-faint);font-family:var(--fd);letter-spacing:.06em;margin-top:1px}
+.item .mini{margin-left:auto;font-family:var(--fd);font-size:12px;letter-spacing:.08em;
+  padding:3px 9px;border-radius:999px;white-space:nowrap;border:1px solid}
+.mini.y{color:#7FE3AC;border-color:#2E6B4C;background:#152A20}
+.mini.n{color:#F0A49C;border-color:#6B3230;background:#2A1A19}
+.listmore{padding:11px 14px;color:var(--ink-faint);font-size:13px;text-align:center}
+
+/* ---------- thẻ kết quả ---------- */
+.card{margin-top:4px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);overflow:hidden}
+.card .top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px 11px}
+.card .code{font-family:var(--fd);font-size:31px;font-weight:700;letter-spacing:.12em;line-height:1.1}
+.card .tot{text-align:right;font-family:var(--fd);line-height:1.15}
+.card .tot b{display:block;font-size:25px;font-weight:700;letter-spacing:.03em}
+.card .tot span{font-size:10.5px;letter-spacing:.14em;color:var(--ink-faint);text-transform:uppercase}
+
+/* băng Phôi giao - thông tin quyết định */
+.giao{display:flex;align-items:center;gap:11px;padding:14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.giao .dot{flex:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700}
+.giao .tx{font-family:var(--fd);font-size:23px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;line-height:1.15}
+.giao .nt{font-size:12.5px;color:rgba(255,255,255,.72);margin-top:2px;letter-spacing:0;text-transform:none;font-family:var(--fb)}
+.giao.y{background:#13331F}
+.giao.y .dot{background:var(--ok);color:#06220F}
+.giao.y .tx{color:#86EFB4}
+.giao.n{background:#39110F}
+.giao.n .dot{background:var(--no);color:#2B0A08}
+.giao.n .tx{color:#FFB3AA}
+
+/* lưới thông số */
+.specs{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line)}
+.specs .c{background:var(--panel);padding:11px 12px}
+.specs .k{font-family:var(--fd);font-size:10.5px;letter-spacing:.13em;color:var(--ink-faint);text-transform:uppercase}
+.specs .v{font-family:var(--fd);font-size:21px;font-weight:700;letter-spacing:.04em;margin-top:2px}
+.specs .v small{font-size:12px;font-weight:400;color:var(--ink-dim);letter-spacing:.02em}
+
+/* bảng các dòng tồn */
+.lines{border-top:1px solid var(--line)}
+.lines .lb{font-family:var(--fd);font-size:10.5px;letter-spacing:.13em;color:var(--ink-faint);
+  text-transform:uppercase;padding:11px 14px 7px}
+.ln{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid #232F39}
+.ln .a{font-family:var(--fd);font-size:17px;font-weight:700;letter-spacing:.04em;min-width:52px}
+.ln .b{font-size:12.5px;color:var(--ink-dim);line-height:1.4}
+.ln .c{margin-left:auto;font-family:var(--fd);font-size:18px;font-weight:700;letter-spacing:.03em;white-space:nowrap}
+.ln .c i{font-style:normal;font-size:11px;color:var(--ink-faint);letter-spacing:.1em;margin-left:3px}
+
+.foot{display:flex;flex-wrap:wrap;gap:6px 16px;padding:11px 14px;border-top:1px solid var(--line);
+  background:var(--panel-2);font-size:12.5px;color:var(--ink-dim)}
+.foot b{color:var(--ink);font-weight:600;font-family:var(--fd);font-size:14px;letter-spacing:.04em}
+
+/* ---------- vừa tra ---------- */
+.recent{margin-top:14px}
+.recent .lb{font-family:var(--fd);font-size:11px;letter-spacing:.14em;color:var(--ink-faint);text-transform:uppercase;margin-bottom:7px}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{font-family:var(--fd);font-size:15px;letter-spacing:.06em;padding:6px 11px;border-radius:999px;
+  border:1px solid var(--line);background:var(--panel);color:var(--ink-dim);cursor:pointer}
+.chip:active{background:var(--panel-2)}
+
+@media (prefers-reduced-motion:no-preference){
+  .card,.miss{animation:in .16s ease-out}
+  @keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+}
+@media (max-width:360px){
+  .card .code{font-size:27px}
+  .specs .v{font-size:19px}
+}
+</style>
+</head>
+<body>
+<noscript>
+  <div style="background:#5A2020;color:#FFE3E0;padding:16px;font:15px/1.6 Roboto,Arial,sans-serif">
+    <b>Máy đang chặn JavaScript nên không tra cứu được.</b><br>
+    Đừng mở file trực tiếp trong Zalo. Hãy mở bằng <b>Chrome</b> (hoặc Safari trên iPhone).
+  </div>
+</noscript>
+<div id="bootErr" style="display:none;background:#5A2020;color:#FFE3E0;padding:14px;font:14px/1.6 Roboto,Arial,sans-serif"></div>
+<script>
+window.onerror=function(m,src,l){
+  var b=document.getElementById('bootErr');
+  if(b){ b.style.display='block'; b.textContent='Lỗi: '+m+' (dòng '+l+'). Chụp màn hình gửi phòng kỹ thuật.'; }
+  return true;
+};
+</script>
+
+<header>
+  <div class="wrap">
+    <div class="hd">
+      <h1>Phôi tồn kho</h1>
+      <div class="meta" id="meta"></div>
+    </div>
+    <div class="search">
+      <input id="q" type="text" inputmode="text" autocomplete="off" autocorrect="off"
+             autocapitalize="characters" spellcheck="false" placeholder="Nhập số lô…">
+      <button id="clear" aria-label="Xóa">&times;</button>
+      <button id="go" class="gobtn" type="button" onclick="if(window.doLookup)doLookup()">Tra cứu</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="out"></div>
+  <div class="recent" id="recentBox" style="display:none">
+    <div class="lb">Vừa tra</div>
+    <div class="chips" id="recent"></div>
+  </div>
+</main>
+
+<script src="./data.js"></script>
+<script>
+(function(){
+"use strict";
+var DB = window.APP_DATA;
+if(!DB){
+  var b=document.getElementById('bootErr');
+  b.style.display='block';
+  b.textContent='Chưa nạp được dữ liệu (thiếu file data.js). Báo phòng kỹ thuật.';
+  return;
+}
+var ROWS = DB.rows;
+
+/* gom các dòng theo số lô */
+var MAP = Object.create(null), CODES = [];
+for (var i=0;i<ROWS.length;i++){
+  var r = ROWS[i], lo = r[0];
+  if(!MAP[lo]){ MAP[lo] = []; CODES.push(lo); }
+  MAP[lo].push(r);
+}
+CODES.sort();
+
+document.getElementById('meta').textContent =
+  CODES.length + ' lô · ' + DB.updated + ' · v1';
+
+/* ---------- tiện ích ---------- */
+function esc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt(n){
+  if(typeof n!=='number'||!isFinite(n)) n=0;
+  var neg=n<0; n=Math.abs(n);
+  var s=n.toFixed(3).replace(/0+$/,'').replace(/\.$/,'');
+  var p=s.split('.'), ip=p[0], dp=p[1]||'';
+  ip=ip.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  return (neg?'-':'')+ip+(dp?','+dp:'');
+}
+function isTake(g){ return !/kh(ô|o)ng\s*l(ấ|a)y/i.test(g||''); }
+
+/* r = [lo, matIdx, khoIdx, macIdx, size, dai, phoiIdx, sl, giaoIdx] */
+function giaoOf(r){ return DB.giaos[r[8]] || ''; }
+function matOf(r){ return DB.mats[r[1]] || ['','']; }
+
+/* ---------- hiển thị ---------- */
+var out = document.getElementById('out'),
+    q = document.getElementById('q'),
+    clearBtn = document.getElementById('clear'),
+    recent = [];
+
+function showErr(m){
+  out.innerHTML='<div class="miss"><div class="t">Máy không hiển thị được</div>'+
+    '<div class="s">Chụp màn hình dòng này gửi phòng kỹ thuật: '+esc(String(m))+'</div></div>';
+}
+function render(){ try{ render_(); }catch(e){ showErr(e && e.message ? e.message : e); } }
+
+function render_(){
+  var v = q.value.toUpperCase().replace(/\s+/g,'');
+  clearBtn.className = v ? 'on' : '';
+  if(!v){
+    out.innerHTML =
+      '<div class="hint">Nhập <b>số lô</b> in trên đầu phôi để xem thông tin.<br>'+
+      'Gõ vài ký tự đầu là đã ra danh sách gợi ý, ví dụ <span class="k">N261A</span>.</div>';
+    return;
+  }
+  if(MAP[v]){ showOne(v); pushRecent(v); return; }
+
+  var hits=[], j;
+  for(j=0;j<CODES.length && hits.length<300;j++) if(CODES[j].indexOf(v)===0) hits.push(CODES[j]);
+  if(!hits.length) for(j=0;j<CODES.length && hits.length<300;j++) if(CODES[j].indexOf(v)>-1) hits.push(CODES[j]);
+
+  if(!hits.length){
+    out.innerHTML='<div class="miss"><div class="t">'+esc(v)+' — không có trong kho</div>'+
+      '<div class="s">Số lô này <b>không nằm trong danh sách phôi tồn kho</b>.<br>'+
+      'Đối chiếu lại số in trên đầu phôi cho chắc. Nếu đúng số mà vẫn không có, '+
+      'báo phòng kỹ thuật để cập nhật dữ liệu.</div></div>';
+    return;
+  }
+
+  var h='<div class="list">';
+  for(j=0;j<hits.length && j<40;j++){
+    var lo=hits[j], g=giaoOf(MAP[lo][0]), take=isTake(g);
+    var tot=0, k;
+    for(k=0;k<MAP[lo].length;k++) tot+=MAP[lo][k][7];
+    h+='<div class="item" data-c="'+lo+'"><span>'+
+       '<span class="code"><em>'+esc(lo.slice(0,v.length))+'</em>'+esc(lo.slice(v.length))+'</span>'+
+       '<div class="sub">Tồn '+fmt(tot)+' '+esc(DB.unit||'')+'</div></span>'+
+       '<span class="mini '+(take?'y':'n')+'">'+esc(g)+'</span></div>';
+  }
+  if(hits.length>40) h+='<div class="listmore">còn '+(hits.length-40)+' lô nữa — nhập thêm ký tự</div>';
+  h+='</div>';
+  out.innerHTML=h;
+}
+
+function showOne(lo){
+  var list = MAP[lo], i;
+  var g = giaoOf(list[0]), take = isTake(g);
+  var tot = 0;
+  for(i=0;i<list.length;i++) tot += list[i][7];
+
+  /* giá trị dùng chung của cả lô */
+  var macs={}, sizes={}, khos={};
+  for(i=0;i<list.length;i++){
+    macs[DB.macs[list[i][3]]] = 1;
+    sizes[list[i][4]] = 1;
+    khos[DB.khos[list[i][2]]] = 1;
+  }
+  function keys(o){ var a=[],k; for(k in o) a.push(k); return a; }
+  var mac = keys(macs).join(' / '), size = keys(sizes).join(' / '), kho = keys(khos).join(' / ');
+
+  var h = '<div class="card">';
+  h += '<div class="top"><div class="code">'+esc(lo)+'</div>'+
+       '<div class="tot"><b>'+fmt(tot)+'</b><span>Tồn ('+esc(DB.unit||'')+')</span></div></div>';
+
+  /* băng Phôi giao */
+  h += '<div class="giao '+(take?'y':'n')+'">'+
+       '<div class="dot">'+(take?'✓':'✕')+'</div>'+
+       '<div><div class="tx">'+esc(g)+'</div>'+
+       '<div class="nt">'+(take
+          ? 'Phôi này giao được cho VHP.'
+          : 'VHP không nhận lô này — không xuất cho VHP.')+'</div></div></div>';
+
+  /* thông số chung */
+  h += '<div class="specs">'+
+       '<div class="c"><div class="k">Mác thép</div><div class="v">'+esc(mac)+'</div></div>'+
+       '<div class="c"><div class="k">Size</div><div class="v">'+esc(size)+'<small> mm</small></div></div>'+
+       '<div class="c"><div class="k">Kho</div><div class="v">'+esc(kho)+'</div></div>'+
+       '</div>';
+
+  /* từng dòng tồn */
+  h += '<div class="lines"><div class="lb">'+
+       (list.length>1 ? list.length+' dòng tồn kho' : 'Chi tiết')+'</div>';
+  for(i=0;i<list.length;i++){
+    var r = list[i], m = matOf(r);
+    h += '<div class="ln">'+
+         '<div class="a">'+esc(r[5])+'<small style="font-size:11px;color:#63757F"> m</small></div>'+
+         '<div class="b">'+esc(m[1] || m[0])+'<br>'+
+           '<span style="color:#63757F">Mã VT '+esc(m[0])+' · Mã phôi '+esc(DB.phois[r[6]])+
+           ' · Kho '+esc(DB.khos[r[2]])+'</span></div>'+
+         '<div class="c">'+fmt(r[7])+'<i>'+esc(DB.unit||'')+'</i></div>'+
+         '</div>';
+  }
+  h += '</div>';
+
+  h += '<div class="foot"><div>Số lô <b>'+esc(lo)+'</b></div>'+
+       '<div>Dữ liệu <b>'+esc(DB.updated)+'</b></div></div></div>';
+  out.innerHTML = h;
+}
+
+function pushRecent(c){
+  recent = recent.filter(function(x){ return x!==c; });
+  recent.unshift(c); recent = recent.slice(0,8);
+  document.getElementById('recentBox').style.display='block';
+  document.getElementById('recent').innerHTML = recent.map(function(x){
+    return '<span class="chip" data-c="'+x+'">'+esc(x)+'</span>'; }).join('');
+}
+
+/* ---------- sự kiện ---------- */
+q.addEventListener('input', render);
+q.addEventListener('keyup', render);
+q.addEventListener('change', render);
+
+var lastRun = 0;
+function doLookup(){
+  var t = (new Date()).getTime();
+  if(t - lastRun < 400) return;       /* chặn chạy 2 lần do touch + click */
+  lastRun = t;
+  render();
+  try{ q.blur(); }catch(e){}
+  try{ window.scrollTo(0,0); }catch(e){}
+}
+window.doLookup = doLookup;
+
+var goBtn = document.getElementById('go');
+goBtn.addEventListener('touchend', function(e){ e.preventDefault(); doLookup(); }, false);
+goBtn.addEventListener('click', doLookup, false);
+clearBtn.addEventListener('click', function(){ q.value=''; render(); q.focus(); });
+clearBtn.addEventListener('touchend', function(e){ e.preventDefault(); q.value=''; render(); q.focus(); }, false);
+
+document.addEventListener('click', function(e){
+  var t = e.target, hit = null;
+  while(t && t !== document){
+    if(t.getAttribute && t.getAttribute('data-c')){ hit = t; break; }
+    t = t.parentNode;
+  }
+  if(!hit) return;
+  q.value = hit.getAttribute('data-c');
+  render();
+  try{ window.scrollTo(0,0); }catch(e2){}
+});
+q.addEventListener('keydown', function(e){
+  if(e.key === 'Enter' || e.keyCode === 13){ e.preventDefault(); doLookup(); }
+});
+
+render();
+})();
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').catch(function(){});
+  });
+}
+</script>
+</body>
+</html>
